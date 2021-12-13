@@ -1,0 +1,37 @@
+FROM ubuntu:xenial
+
+RUN apt-get update \
+  && apt-get install -y wget software-properties-common \
+  && rm -rf /var/lib/apt/lists/* \
+  && add-apt-repository -y ppa:ethereum/ethereum \
+  && apt-get update \
+  && apt-get install -y ethereum
+
+WORKDIR "/root"
+
+
+ARG password
+ARG privatekey
+RUN echo $password > ~/.accountpassword
+RUN echo $privatekey > ~/.privatekey
+ADD ./genesis.json ./genesis.json
+RUN geth --datadir data init genesis.json
+RUN geth --datadir data account import --password ~/.accountpassword  ~/.privatekey
+
+ENV address=""
+ENV bootnodeIp=""
+ENV bootnodeId=""
+ENV currentIp=""
+ENV bootnodeEnode=""
+ENV networkRestrictions=""
+
+CMD exec geth --datadir data --port 30303 --networkid 1158 --bootnodes "$bootnodeEnode" --nat=extip:$currentIp --http --http.addr  "0.0.0.0" --http.api "eth,web3,net,admin,debug,db" --http.corsdomain  "*" --syncmode="full" --unlock $address --password ~/.accountpassword --allow-insecure-unlock --netrestrict $networkRestrictions
+
+# CMD exec geth --bootnodes enode://2cfab66feaf4f490488afd970e44779a818a46c880af8e07d9f6f74df86539f7397e5b6856d28c79e5a2ffb4de6de4700f550babb2dedd0fc098b889fff2317a@127.0.0.1:30303  --networkid 1158 --verbosity=5 --rpc --rpcaddr "0.0.0.0" --rpcapi "eth,web3,net,admin,debug,db" --rpccorsdomain "*" --syncmode="full" --nousb
+
+# enode://$bootnodeId@$bootnodeIp:30303
+
+EXPOSE 8545
+EXPOSE 30303/udp
+EXPOSE 30303/tcp
+
