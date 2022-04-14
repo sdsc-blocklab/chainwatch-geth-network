@@ -1,1 +1,5 @@
+# Debug
 logs/
+
+# Miscellaneous
+**.DS_Store
