@@ -4,77 +4,83 @@ services:
     hostname: geth-bootnode
     environment:
       - nodekeyhex=08f0e1dee5c1b4645f3331a566009e41a4514b6cd28656d63d0449ecf812812b #Needs to be fix, so that the miners know the resulting enode id
-      - bootnodeIp=172.25.0.101
-      - address=0x8cc5a1a0802db41db826c2fcb72423744338dcb0
+      - bootnodeIp=${BOOTNODE_IP}
       - networkRestrictions=${NETWORK_RESTRICTIONS}
       - networkId=${NETWORK_ID}
     build:
-      context: ./
-      dockerfile: ./bootnode/Dockerfile
+      context: ./images
+      dockerfile: ./Dockerfile.bootnode
       args:
-        privatekey: df504d175ae63abf209bad9dda965310d99559620550e74521a6798a41215f46 # Please don't do something like this in production, okay?
+        privatekey: de230ef38051468dfb7758c7cfb2cd136895224fd24fcb1525d646861d4c6fb3 # Please don't do something like this in production, okay?
         password: pass
     container_name: geth-bootnode
     ports:
       - 30303:30303/udp
       - 30303:30303/tcp
       - 30301:30301/udp
+    volumes:
+      - ./volumes/geth-keystore:/root/data/keystore
     networks:
       chainnet:
-        ipv4_address: 172.25.0.101 # The miners need to know the IP address later on
+        ipv4_address: ${BOOTNODE_IP} # The miners need to know the IP address later on
 
-
-  # geth-dev-miner-1:
-  #   hostname: geth-dev-miner-1
-  #   depends_on:
-  #     - geth-bootnode
-  #   environment:
-  #     - address=0x8cc5a1a0802db41db826c2fcb72423744338dcb0 #derived from the private key which is passed in the args
-  #     - bootnodeId=76a8171707eca17647a47ca99ffd348927dfa60102792ea349a25d5192e61855be83b786e376276a306afcceea4ffd1c9c77e4370b417efc39f328a0d068004c #derived from the nodekeyhex of the bootnode
-  #     - bootnodeIp=172.25.0.101
-  #     - nodekeyhex=08f0e1dee5c1b4645f3331a566009e41a4514b6cd28656d63d0449ecf812812b
-  #     - currentIp=172.25.0.102
-  #     - bootnodeEnode=${BOOT_ENODE}
-  #     - networkRestrictions=${NETWORK_RESTRICTIONS}
-  #     - networkId=${NETWORK_ID}
-  #   build:
-  #     context: ./miner
-  #     args:
-  #       privatekey: df504d175ae63abf209bad9dda965310d99559620550e74521a6798a41215f46 # Please don't do something like this in production, okay?
-  #       password: pass
-  #   container_name: geth-miner-1
-  #   ports:
-  #     - 30305:30303/udp
-  #     - 30305:30303/tcp
-  #   # volumes:
-  #   #   - eth-data-1:/root/.ethash
-  #   networks:
-  #     chainnet:
-  #       ipv4_address: 172.25.0.102 # The monitor needs to know this address
-
+  geth-node:
+    hostname: geth-node
+    depends_on:
+      - geth-bootnode
+    environment:
+      - address=0xe79914e459ac0cdb83e605cb55a2872379d2cdc7
+      - bootnodeIp=${BOOTNODE_IP}
+      - currentIp=172.25.0.199
+      - bootnodeEnode=${BOOTNODE_ENODE}
+      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - networkId=${NETWORK_ID}
+    build:
+      context: ./images
+      dockerfile: ./Dockerfile.node
+      args:
+        privatekey: de55ccd2922f839f88533ee7b5e46a7cbc1e338d57c7406a46d5a1064922cad7
+        password: pass
+    container_name: geth-node
+    ports:
+        - 8545:8545
+        - 30304:30303/udp
+        - 30304:30303/tcp
+    volumes:
+      # - ./volumes/geth-node:/root/data
+      - ./volumes/geth-keystore:/root/data/keystore
+    # healthcheck:
+    #   test: wget http://localhost:8545
+    #   interval: 2s
+    #   timeout: 5s
+    #   retries: 30
+    networks:
+      chainnet:
+        ipv4_address: 172.25.0.199 # The monitor needs to know this address
 
   geth-miner-01:
     hostname: geth-miner-01
     depends_on:
       - geth-bootnode
     environment:
-      - address=0xa1dd179d921ae78ba76e32c405fc10cfcddd2ba1 #derived from the private key which is passed in the args
-      - bootnodeIp=172.25.0.101
-      - currentIp=172.25.0.102
-      - bootnodeEnode=${BOOT_ENODE}
-      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - address=0x2d93c959cc6dd35ed737e31de42b42f0654b0a42 #derived from the private key which is passed in the args
       - networkId=${NETWORK_ID}
+      - bootnodeEnode=${BOOTNODE_ENODE}
+      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - currentIp=172.25.0.102
     build:
-      context: ./
-      dockerfile: ./miner/Dockerfile
+      context: ./images
+      dockerfile: ./Dockerfile.miner
       args:
-        privatekey: 6ad50b377d84005ef184d4eaa9731f2dae810e39b3880510c044dc64c0b6db12
-        password: word
+        privatekey: ced06f7c9ce499ec0bbc9d78a162fcbcaa78f0146a6362c41ed1c5168bb6a265
+        password: pass
     container_name: geth-miner-01
     ports:
       - 8546:8545
       - 30305:30303/udp
       - 30305:30303/tcp
+    volumes:
+      - ./volumes/geth-keystore:/root/data/keystore
     networks:
       chainnet:
         ipv4_address: 172.25.0.102
@@ -84,23 +90,25 @@ services:
     depends_on:
       - geth-bootnode
     environment:
-      - address=0x77053d905afd3302d71610543ebeb80ad2cf44bb #derived from the private key which is passed in the args
-      - bootnodeIp=172.25.0.101
-      - currentIp=172.25.0.103
-      - bootnodeEnode=${BOOT_ENODE}
-      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - address=0xb81a23bac045acaf16c4bcb1370e8a9b5c6e5297 #derived from the private key which is passed in the args
+      # - bootnodeIp=${BOOTNODE_IP}
       - networkId=${NETWORK_ID}
+      - bootnodeEnode=${BOOTNODE_ENODE}
+      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - currentIp=172.25.0.103
     build:
-      context: ./
-      dockerfile: ./miner/Dockerfile
+      context: ./images
+      dockerfile: ./Dockerfile.miner
       args:
-        privatekey: 085855d07195192983092917eeb6f9b87c955600242f11cbab0e7d0a7fd8bcc8
-        password: word
+        privatekey: d03399488878127a6eb734317ebe4d28b49704b40142768328ccbd1b2ba51ec1
+        password: pass
     container_name: geth-miner-02
     ports:
       - 8547:8545
       - 30306:30303/udp
       - 30306:30303/tcp
+    volumes:
+      - ./volumes/geth-keystore:/root/data/keystore
     networks:
       chainnet:
         ipv4_address: 172.25.0.103
@@ -110,23 +118,25 @@ services:
     depends_on:
       - geth-bootnode
     environment:
-      - address=0x0baa50c29646037f88dea197155a6f351166f7ef #derived from the private key which is passed in the args
-      - bootnodeIp=172.25.0.101
-      - currentIp=172.25.0.104
-      - bootnodeEnode=${BOOT_ENODE}
-      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - address=0x4cf5d669f0194624eddd257e407452a0e9941d8e #derived from the private key which is passed in the args
+      # - bootnodeIp=${BOOTNODE_IP}
       - networkId=${NETWORK_ID}
+      - bootnodeEnode=${BOOTNODE_ENODE}
+      - networkRestrictions=${NETWORK_RESTRICTIONS}
+      - currentIp=172.25.0.104
     build:
-      context: ./
-      dockerfile: ./miner/Dockerfile
+      context: ./images
+      dockerfile: ./Dockerfile.miner
       args:
-        privatekey: 213dcf2d872b38792706d99db29195bbf36b48ee03fe2bf976cdbd14aaa9942e
-        password: word
+        privatekey: 3ca88eee0a2341ff684646eb25e9d2dd77d1a02623ffc60e8cb3567eb8aea346
+        password: pass
     container_name: geth-miner-03
     ports:
       - 8548:8545
       - 30307:30303/udp
       - 30307:30303/tcp
+    volumes:
+      - ./volumes/geth-keystore:/root/data/keystore
     networks:
       chainnet:
         ipv4_address: 172.25.0.104
@@ -136,18 +146,16 @@ services:
   #   depends_on:
   #     - geth-bootnode
   #   environment:
-  #     - address=0x44924250402b3cd455851a6993b5285551c2bf5b #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
-  #     - currentIp=172.25.0.105
-  #     - bootnodeEnode=${BOOT_ENODE}
-  #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
+  #     - networkRestrictions=${NETWORK_RESTRICTIONS}
+  #     - currentIp=172.25.0.105
   #   build:
-  #     context: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     context: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: ac2d688f3d224b08e2ae50583b6a39fca03f9a310a64f11cb75525b6a1424e96
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-04
   #   ports:
   #     - 8549:8545
@@ -162,18 +170,16 @@ services:
   #   depends_on:
   #     - geth-bootnode
   #   environment:
-  #     - address=0xc17351dc036d12734e1996ef0245e089cebaed7e #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
-  #     - currentIp=172.25.0.106
-  #     - bootnodeEnode=${BOOT_ENODE}
-  #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
+  #     - networkRestrictions=${NETWORK_RESTRICTIONS}
+  #     - currentIp=172.25.0.106
   #   build:
-  #     context: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     context: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: 9955db9d37cf1543ef372a7c8431bbe4e472663e02e48011903d469a2e4195c8
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-05
   #   ports:
   #     - 8550:8545
@@ -189,17 +195,17 @@ services:
   #     - geth-bootnode
   #   environment:
   #     - address=0x57c8b04534c031f9177c8be9f06d2f9111ef369d #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
+  #     - bootnodeIp=${BOOTNODE_IP}
   #     - currentIp=172.25.0.107
-  #     - bootnodeEnode=${BOOT_ENODE}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
   #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
   #   build:
-  #     context: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     context: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: a2d597bbc499fc0918d1b928270f8837fa2ec8116444e3062a5c749e0fa0f1d6
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-06
   #   ports:
   #     - 30310:30303/udp
@@ -214,17 +220,17 @@ services:
   #     - geth-bootnode
   #   environment:
   #     - address=0x755cfd3e74df4c680f92e7954ae2cedb121e229e #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
+  #     - bootnodeIp=${BOOTNODE_IP}
   #     - currentIp=172.25.0.108
-  #     - bootnodeEnode=${BOOT_ENODE}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
   #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
   #   build:
-  #     context: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     context: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: 0355e3804ac74532cb0f33b60826398ca39e3dbd5173249820b4f5fd6967362f
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-07
   #   ports:
   #     - 30311:30303/udp
@@ -239,17 +245,17 @@ services:
   #     - geth-bootnode
   #   environment:
   #     - address=0xca9c8e97518cf96976ac3cb5351867643cdf8fa7 #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
+  #     - bootnodeIp=${BOOTNODE_IP}
   #     - currentIp=172.25.0.109
-  #     - bootnodeEnode=${BOOT_ENODE}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
   #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
   #   build:
-  #     ccontext: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     ccontext: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: ca255a9a97e33cdf170a81b508746ffb3c3b9133d948d670e197b77d9fcae737
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-08
   #   ports:
   #     - 30312:30303/udp
@@ -264,17 +270,17 @@ services:
   #     - geth-bootnode
   #   environment:
   #     - address=0xb3196da18895149cd987a7c7167aea6378978ccb #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
+  #     - bootnodeIp=${BOOTNODE_IP}
   #     - currentIp=172.25.0.110
-  #     - bootnodeEnode=${BOOT_ENODE}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
   #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
   #   build:
-  #     context: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     context: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: 79649319e1bdae63a375c0b1ab9a3bfda219cf9b44b618529d33d09ee1d46029
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-09
   #   ports:
   #     - 30313:30303/udp
@@ -289,17 +295,17 @@ services:
   #     - geth-bootnode
   #   environment:
   #     - address=0xc6b7b660ddb159959cc56724abc4ab481af390b3 #derived from the private key which is passed in the args
-  #     - bootnodeIp=172.25.0.101
+  #     - bootnodeIp=${BOOTNODE_IP}
   #     - currentIp=172.25.0.111
-  #     - bootnodeEnode=${BOOT_ENODE}
+  #     - bootnodeEnode=${BOOTNODE_ENODE}
   #     - networkRestrictions=${NETWORK_RESTRICTIONS}
   #     - networkId=${NETWORK_ID}
   #   build:
-  #     context: ./
-  #     dockerfile: ./miner/Dockerfile
+  #     context: ./images
+  #     dockerfile: ./Dockerfile.miner
   #     args:
   #       privatekey: 5691503de0ab6589c497ee4204caed242365b51dd3331712bd14c58812969985
-  #       password: word
+  #       password: pass
   #   container_name: geth-miner-10
   #   ports:
   #     - 30314:30303/udp
@@ -307,40 +313,6 @@ services:
   #   networks:
   #     chainnet:
   #       ipv4_address: 172.25.0.111
-    
-
-  geth-node:
-    hostname: geth-node
-    depends_on:
-      - geth-bootnode
-    environment:
-      - address=0x3590aca93338b0721966a8d0c96ebf2c4c87c544 
-      - bootnodeIp=172.25.0.101
-      - currentIp=172.25.0.199
-      - bootnodeEnode=${BOOT_ENODE}
-      - networkRestrictions=${NETWORK_RESTRICTIONS}
-      - networkId=${NETWORK_ID}
-    build:
-      context: ./
-      dockerfile: ./node/Dockerfile
-      args:
-        privatekey: bc5b578e0dcb2dbf98dd6e5fe62cb5a28b84a55e15fc112d4ca88e1f62bd7c35 
-        password: pass
-    container_name: geth-node
-    ports:
-        - 8545:8545
-        - 30304:30303/udp
-        - 30304:30303/tcp
-    # healthcheck:
-    #   test: wget http://localhost:8545
-    #   interval: 2s
-    #   timeout: 5s
-    #   retries: 30
-    # volumes:
-    #     - eth-data-4:/root/.ethash
-    networks:
-      chainnet:
-        ipv4_address: 172.25.0.199 # The monitor needs to know this address
 
 networks:
   chainnet:
