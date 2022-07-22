@@ -34,7 +34,7 @@ CMD exec geth --datadir data \
   --networkid "1158" \
   --bootnodes "$bootnodeEnode" \
   --nat="extip:$currentIp" \
-  --http --http.addr  "0.0.0.0" --http.api "eth,web3,net,admin,debug,db" --http.corsdomain  "*" \
+  --http --http.addr  "0.0.0.0" --http.api "eth,web3,net,admin,debug,db,geth,http" --http.corsdomain  "*" \
   --syncmode="full" \
   --unlock "$address" \
   --password ~/.password \
